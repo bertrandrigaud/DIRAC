@@ -86,7 +86,7 @@ class SQLAlchemyDB(DIRACDB):
                         self.engine
                     )  # pylint: disable=no-member
             else:
-                gLogger.debug(f"Table {table} already exists")
+                gLogger.getSubLogger(self.__class__.__name__).debug(f"Table {table} already exists")
 
     def insert(self, table, params):
         """

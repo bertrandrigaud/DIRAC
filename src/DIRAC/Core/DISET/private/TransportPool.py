@@ -9,7 +9,7 @@ class TransportPool:
         if logger:
             self.log = logger
         else:
-            self.log = gLogger
+            self.log = gLogger.getSubLogger(self.__class__.__name__)
         self.__modLock = threading.Lock()
         self.__transports = {}
         self.__listenPersistConn = False

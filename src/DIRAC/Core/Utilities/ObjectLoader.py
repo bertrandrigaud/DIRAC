@@ -40,6 +40,7 @@ class ObjectLoader(metaclass=DIRACSingleton):
         self.__rootModules = baseModules
         self.__objs = {}
         self.__generateRootModules(baseModules)
+        self.__log = gLogger.getSubLogger(self.__class__.__name__)
 
     def reloadRootModules(self):
         """Retrigger the initialization of the rootModules.
@@ -61,7 +62,7 @@ class ObjectLoader(metaclass=DIRACSingleton):
             impName = modName
             if rootModule:
                 impName = f"{rootModule}.{impName}"
-            gLogger.debug(f"Trying to load {impName}")
+            self.__log.debug(f"Trying to load {impName}")
             result = recurseImport(impName, hideExceptions=hideExceptions)
             if not result["OK"]:
                 return result
@@ -124,7 +125,7 @@ class ObjectLoader(metaclass=DIRACSingleton):
             impPath = modulePath
             if rootModule:
                 impPath = f"{rootModule}.{impPath}"
-            gLogger.debug(f"Trying to load {impPath}")
+            self.__log.debug(f"Trying to load {impPath}")
 
             result = recurseImport(impPath)
             if not result["OK"]:
@@ -132,7 +133,7 @@ class ObjectLoader(metaclass=DIRACSingleton):
             if not result["Value"]:
                 continue
             parentModule = result["Value"]
-            gLogger.verbose(f"Loaded module {impPath} at {parentModule.__path__}")
+            self.__log.verbose(f"Loaded module {impPath} at {parentModule.__path__}")
 
             for _modLoader, modName, isPkg in pkgutil.walk_packages(parentModule.__path__):
                 if reFilter and not reFilter.match(modName):
@@ -153,7 +154,7 @@ class ObjectLoader(metaclass=DIRACSingleton):
                 result = recurseImport(fullName)
                 if not result["OK"]:
                     if continueOnError:
-                        gLogger.error(
+                        self.__log.error(
                             "Error loading module but continueOnError is true",
                             f"module {fullName} error {result}",
                         )
@@ -164,7 +165,7 @@ class ObjectLoader(metaclass=DIRACSingleton):
 
                 modClass = getattr(result["Value"], modName, None)
                 if not modClass:
-                    gLogger.warn(f"{fullName} does not contain a {modName} object")
+                    self.__log.warn(f"{fullName} does not contain a {modName} object")
                     continue
 
                 if parentClass and not issubclass(modClass, parentClass):
@@ -182,6 +183,8 @@ def loadObjects(path, reFilter=None, parentClass=None):
     :param object parentClass: class instance
     :return: dictionary containing the name of the class and its instance
     """
+
+    log = gLogger.getSubLogger(__name__)
     if not reFilter:
         reFilter = re.compile(r".*[a-z1-9]\.py$")
     pathList = List.fromChar(path, "/")
@@ -196,7 +199,7 @@ def loadObjects(path, reFilter=None, parentClass=None):
             if reFilter.match(objFile):
                 pythonClassName = objFile[:-3]
                 if pythonClassName not in objectsToLoad:
-                    gLogger.debug(f"Adding to load queue {parentModule}/{path}/{pythonClassName}")
+                    log.debug(f"Adding to load queue {parentModule}/{path}/{pythonClassName}")
                     objectsToLoad[pythonClassName] = parentModule
 
     # Load them!
@@ -211,14 +214,14 @@ def loadObjects(path, reFilter=None, parentClass=None):
             objModule = __import__(objPythonPath, globals(), locals(), pythonClassName)
             objClass = getattr(objModule, pythonClassName)
         except Exception as e:
-            gLogger.error("Can't load type", f"{parentModule}/{pythonClassName}: {str(e)}")
+            log.error("Can't load type", f"{parentModule}/{pythonClassName}: {str(e)}")
             continue
         if parentClass == objClass:
             continue
         if parentClass and not issubclass(objClass, parentClass):
-            gLogger.warn(f"{objClass} is not a subclass of {parentClass}. Skipping")
+            log.warn(f"{objClass} is not a subclass of {parentClass}. Skipping")
             continue
-        gLogger.debug(f"Loaded {objPythonPath}")
+        log.debug(f"Loaded {objPythonPath}")
         loadedObjects[pythonClassName] = objClass
 
     return loadedObjects

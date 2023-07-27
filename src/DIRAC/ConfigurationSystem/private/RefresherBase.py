@@ -14,16 +14,17 @@ def _updateFromRemoteLocation(serviceClient):
     """
     Refresh the configuration
     """
-    gLogger.debug("", f"Trying to refresh from {serviceClient.serverURL}")
+    log = gLogger.getSubLogger(__name__.split(".")[-1])
+    log.debug("", f"Trying to refresh from {serviceClient.serverURL}")
     localVersion = gConfigurationData.getVersion()
     retVal = serviceClient.getCompressedDataIfNewer(localVersion)
     if retVal["OK"]:
         dataDict = retVal["Value"]
         newestVersion = dataDict["newestVersion"]
         if localVersion < newestVersion:
-            gLogger.debug("New version available", f"Updating to version {newestVersion}...")
+            log.debug("New version available", f"Updating to version {newestVersion}...")
             gConfigurationData.loadRemoteCFGFromCompressedMem(dataDict["data"])
-            gLogger.debug(f"Updated to version {gConfigurationData.getVersion()}")
+            log.debug(f"Updated to version {gConfigurationData.getVersion()}")
             gEventDispatcher.triggerEvent("CSNewVersion", newestVersion, threaded=True)
         return S_OK()
     return retVal
@@ -43,6 +44,7 @@ class RefresherBase:
         self._timeout = 60
         self._callbacks = {"newVersion": []}
         gEventDispatcher.registerEvent("CSNewVersion")
+        self.__log = gLogger.getSubLogger(self.__class__.__name__)
 
     def disable(self):
         """
@@ -90,7 +92,7 @@ class RefresherBase:
         Refresh configuration and publish local updates
         """
         self._lastUpdateTime = time.time()
-        gLogger.info("Refreshing from master server")
+        self.__log.info("Refreshing from master server")
         sMasterServer = gConfigurationData.getMasterServer()
         if sMasterServer:
             from DIRAC.ConfigurationSystem.Client.ConfigurationClient import ConfigurationClient
@@ -103,16 +105,16 @@ class RefresherBase:
             )
             dRetVal = _updateFromRemoteLocation(oClient)
             if not dRetVal["OK"]:
-                gLogger.error("Can't update from master server", dRetVal["Message"])
+                self.__log.error("Can't update from master server", dRetVal["Message"])
                 return False
             if gConfigurationData.getAutoPublish():
-                gLogger.info("Publishing to master server...")
+                self.__log.info("Publishing to master server...")
                 dRetVal = oClient.publishSlaveServer(self._url)
                 if not dRetVal["OK"]:
-                    gLogger.error("Can't publish to master server", dRetVal["Message"])
+                    self.__log.error("Can't publish to master server", dRetVal["Message"])
             return True
         else:
-            gLogger.warn("No master server is specified in the configuration, trying to get data from other slaves")
+            self.__log.warn("No master server is specified in the configuration, trying to get data from other slaves")
             return self._refresh()["OK"]
 
     def _refresh(self, fromMaster=False):
@@ -120,26 +122,26 @@ class RefresherBase:
         Refresh configuration
         """
         self._lastUpdateTime = time.time()
-        gLogger.debug("Refreshing configuration...")
+        self.__log.debug("Refreshing configuration...")
         gatewayList = getGatewayURLs("Configuration/Server")
         updatingErrorsList = []
         if gatewayList:
             initialServerList = gatewayList
-            gLogger.debug("Using configuration gateway", str(initialServerList[0]))
+            self.__log.debug("Using configuration gateway", str(initialServerList[0]))
         elif fromMaster:
             masterServer = gConfigurationData.getMasterServer()
             initialServerList = [masterServer]
-            gLogger.debug(f"Refreshing from master {masterServer}")
+            self.__log.debug(f"Refreshing from master {masterServer}")
         else:
             initialServerList = gConfigurationData.getServers()
-            gLogger.debug(f"Refreshing from list {str(initialServerList)}")
+            self.__log.debug(f"Refreshing from list {str(initialServerList)}")
 
         # If no servers in the initial list, we are supposed to use the local configuration only
         if not initialServerList:
             return S_OK()
 
         randomServerList = List.randomize(initialServerList)
-        gLogger.debug(f"Randomized server list is {', '.join(randomServerList)}")
+        self.__log.debug(f"Randomized server list is {', '.join(randomServerList)}")
 
         for sServer in randomServerList:
             from DIRAC.ConfigurationSystem.Client.ConfigurationClient import ConfigurationClient
@@ -155,7 +157,7 @@ class RefresherBase:
                 return dRetVal
             else:
                 updatingErrorsList.append(dRetVal["Message"])
-                gLogger.warn("Can't update from server", f"Error while updating from {sServer}: {dRetVal['Message']}")
+                self.__log.warn("Can't update from server", f"Error while updating from {sServer}: {dRetVal['Message']}")
                 if dRetVal["Message"].find("Insane environment") > -1:
                     break
         return S_ERROR("Reason(s):\n\t%s" % "\n\t".join(List.uniqueElements(updatingErrorsList)))

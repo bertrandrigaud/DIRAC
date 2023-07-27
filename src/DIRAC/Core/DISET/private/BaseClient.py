@@ -64,6 +64,9 @@ class BaseClient:
             raise TypeError(
                 f"Service name expected to be a string. Received {str(serviceName)} type {type(serviceName)}"
             )
+
+        self.__log = gLogger.getSubLogger(self.__class__.__name__)
+
         # Explicitly convert to a str to avoid Python 2 M2Crypto issues with unicode objects
         self._destinationSrv = str(serviceName)
         self._serviceName = str(serviceName)
@@ -307,17 +310,17 @@ class BaseClient:
         # If we have to use a gateway, we just replace the server name in it
         for protocol in gProtocolDict:
             if self._destinationSrv.find(f"{protocol}://") == 0:
-                gLogger.debug("Already given a valid url", self._destinationSrv)
+                self.__log.debug("Already given a valid url", self._destinationSrv)
                 if not gatewayURL:
                     return S_OK(self._destinationSrv)
-                gLogger.debug("Reconstructing given URL to pass through gateway")
+                self.__log.debug("Reconstructing given URL to pass through gateway")
                 path = "/".join(self._destinationSrv.split("/")[3:])
                 finalURL = f"{gatewayURL}/{path}"
-                gLogger.debug(f"Gateway URL conversion:\n {self._destinationSrv} -> {finalURL}")
+                self.__log.debug(f"Gateway URL conversion:\n {self._destinationSrv} -> {finalURL}")
                 return S_OK(finalURL)
 
         if gatewayURL:
-            gLogger.debug("Using gateway", gatewayURL)
+            self.__log.debug("Using gateway", gatewayURL)
             return S_OK(f"{gatewayURL}/{self._destinationSrv}")
 
         # We extract the list of URLs from the CS (System/URLs/Component)
@@ -345,13 +348,13 @@ class BaseClient:
         )  # we retry 2 times all services, if we run more than 2 services
         if self.__nbOfUrls == len(self.__bannedUrls):
             self.__bannedUrls = []  # retry all urls
-            gLogger.debug("Retrying again all URLs")
+            self.__log.debug("Retrying again all URLs")
 
         if len(self.__bannedUrls) > 0 and len(urlsList) > 1:
             # we have host which is not accessible. We remove that host from the list.
             # We only remove if we have more than one instance
             for i in self.__bannedUrls:
-                gLogger.debug("Removing banned URL", f"{i}")
+                self.__log.debug("Removing banned URL", f"{i}")
                 urlsList.remove(i)
 
         # Take the first URL from the list
@@ -386,7 +389,7 @@ class BaseClient:
                     nexturl = self.__selectUrl(nexturl, urlsList[1:])
                     if nexturl:  # an url found which is in different host
                         sURL = nexturl
-        gLogger.debug("Discovering URL for service", f"{self._destinationSrv} -> {sURL}")
+        self.__log.debug("Discovering URL for service", f"{self._destinationSrv} -> {sURL}")
         return S_OK(sURL)
 
     def __selectUrl(self, notselect, urls):
@@ -406,7 +409,7 @@ class BaseClient:
                     url = i
                     break
                 else:
-                    gLogger.error(retVal["Message"])
+                    self.__log.error(retVal["Message"])
         return url
 
     def __checkThreadID(self):
@@ -429,7 +432,7 @@ Client {str(self)}
 can only run on thread {self.__allowedThreadID}
 and this is thread {cThID}
 ==============================================================="""
-            gLogger.error("DISET client thread safety error", msgTxt)
+            self.__log.error("DISET client thread safety error", msgTxt)
             # raise Exception( msgTxt )
 
     def _connect(self):
@@ -461,7 +464,7 @@ and this is thread {cThID}
         if self.__enableThreadCheck:
             self.__checkThreadID()
 
-        gLogger.debug(f"Trying to connect to: {self.serviceURL}")
+        self.__log.debug(f"Trying to connect to: {self.serviceURL}")
         try:
             # Calls the transport method of the apropriate protocol.
             # self.__URLTuple[1:3] = [server name, port, System/Component]
@@ -471,7 +474,7 @@ and this is thread {cThID}
             retVal = transport.initAsClient()
             # We try at most __nbOfRetry each URLs
             if not retVal["OK"]:
-                gLogger.warn("Issue getting socket:", f"{transport} : {self.__URLTuple} : {retVal['Message']}")
+                self.__log.warn("Issue getting socket:", f"{transport} : {self.__URLTuple} : {retVal['Message']}")
                 # We try at most __nbOfRetry each URLs
                 if self.__retry < self.__nbOfRetry * self.__nbOfUrls - 1:
                     # Recompose the URL (why not using self.serviceURL ? )
@@ -483,7 +486,7 @@ and this is thread {cThID}
                     )
                     # Add the url to the list of banned URLs if it is not already there. (Can it happen ? I don't think so)
                     if url not in self.__bannedUrls:
-                        gLogger.warn("Non-responding URL temporarily banned", f"{url}")
+                        self.__log.warn("Non-responding URL temporarily banned", f"{url}")
                         self.__bannedUrls += [url]
                     # Increment the retry counter
                     self.__retry += 1
@@ -497,13 +500,13 @@ and this is thread {cThID}
                     # If it is our last attempt for each URL, we increase the timeout
                     if self.__retryCounter == self.__nbOfRetry - 1:
                         transport.setSocketTimeout(5)  # we increase the socket timeout in case the network is not good
-                    gLogger.info("Retry connection", ": %d to %s" % (self.__retry, self.serviceURL))
+                    self.__log.info("Retry connection", ": %d to %s" % (self.__retry, self.serviceURL))
                     # If we tried all the URL, we increase the global counter (__retryCounter), and sleep
                     if len(self.__bannedUrls) == self.__nbOfUrls:
                         self.__retryCounter += 1
                         # we run only one service! In that case we increase the retry delay.
                         self.__retryDelay = 3.0 / self.__nbOfUrls if self.__nbOfUrls > 1 else 2
-                        gLogger.info(f"Waiting {self.__retryDelay:f} seconds before retry all service(s)")
+                        self.__log.info(f"Waiting {self.__retryDelay:f} seconds before retry all service(s)")
                         time.sleep(self.__retryDelay)
                     # rediscover the URL
                     self.__discoverURL()
@@ -515,7 +518,7 @@ and this is thread {cThID}
             gLogger.exception(lException=True, lExcInfo=True)
             return S_ERROR(f"Can't connect to {self.serviceURL}: {repr(e)}")
         # We add the connection to the transport pool
-        gLogger.debug(f"Connected to: {self.serviceURL}")
+        self.__log.debug(f"Connected to: {self.serviceURL}")
         trid = getGlobalTransportPool().add(transport)
 
         return S_OK((trid, transport))
@@ -570,10 +573,10 @@ and this is thread {cThID}
 
         # TODO: Check if delegation is required. This seems to be used only for the GatewayService
         if serverReturn["OK"] and "Value" in serverReturn and isinstance(serverReturn["Value"], dict):
-            gLogger.debug("There is a server requirement")
+            self.__log.debug("There is a server requirement")
             serverRequirements = serverReturn["Value"]
             if "delegate" in serverRequirements:
-                gLogger.debug("A delegation is requested")
+                self.__log.debug("A delegation is requested")
                 serverReturn = self.__delegateCredentials(transport, serverRequirements["delegate"])
         return serverReturn
 

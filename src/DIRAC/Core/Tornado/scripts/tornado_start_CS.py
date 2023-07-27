@@ -39,7 +39,7 @@ def main():
     resultDict = localCfg.loadUserData()
     if not resultDict["OK"]:
         gLogger.initialize("Tornado-CS", "/")
-        gLogger.error("There were errors when loading configuration", resultDict["Message"])
+        gLogger.getSubLogger(__name__.split(".")[-1]).error("There were errors when loading configuration", resultDict["Message"])
         sys.exit(1)
 
     includeExtensionErrors()

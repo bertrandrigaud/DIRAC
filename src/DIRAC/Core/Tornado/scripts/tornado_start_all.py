@@ -37,7 +37,7 @@ def main():
     resultDict = localCfg.loadUserData()
     if not resultDict["OK"]:
         gLogger.initialize("Tornado", "/")
-        gLogger.error("There were errors when loading configuration", resultDict["Message"])
+        gLogger.getSubLogger(__name__.split(".")[-1]).error("There were errors when loading configuration", resultDict["Message"])
         sys.exit(1)
 
     includeExtensionErrors()
@@ -49,7 +49,7 @@ def main():
     # use tornado-start-CS.py
     key = f"/Systems/Configuration/{PathFinder.getSystemInstance('Configuration')}/Services/Server/Protocol"
     if gConfigurationData.isMaster() and gConfig.getValue(key, "dips").lower() == "https":
-        gLogger.fatal("You can't run the CS and services in the same server!")
+        gLogger.getSubLogger(__name__.split(".")[-1]).fatal("You can't run the CS and services in the same server!")
         sys.exit(0)
 
     serverToLaunch = TornadoServer(endpoints=True)

@@ -28,7 +28,7 @@ def main():
     localCfg.addDefaultEntry("LogColor", True)
     resultDict = localCfg.loadUserData()
     if not resultDict["OK"]:
-        gLogger.error("There were errors when loading configuration", resultDict["Message"])
+        gLogger.getSubLogger(__name__.split(".")[-1]).error("There were errors when loading configuration", resultDict["Message"])
         sys.exit(1)
 
     includeExtensionErrors()
@@ -41,7 +41,7 @@ def main():
         # See https://bugzilla.nordugrid.org/show_bug.cgi?id=4022 for further details
         os._exit(0)
     else:
-        gLogger.error("Error while loading agent module", result["Message"])
+        gLogger.getSubLogger(__name__.split(".")[-1]).error("Error while loading agent module", result["Message"])
         sys.exit(2)
 
 

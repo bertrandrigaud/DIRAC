@@ -32,7 +32,7 @@ def main():
     localCfg.addDefaultEntry("LogColor", True)
     resultDict = localCfg.loadUserData()
     if not resultDict["OK"]:
-        gLogger.fatal("There were errors when loading configuration", resultDict["Message"])
+        gLogger.getSubLogger(__name__.split(".")[-1]).fatal("There were errors when loading configuration", resultDict["Message"])
         sys.exit(1)
 
     includeExtensionErrors()
@@ -40,15 +40,15 @@ def main():
 
     result = executorReactor.loadModules(positionalArgs)
     if not result["OK"]:
-        gLogger.fatal("Error while loading executor", result["Message"])
+        gLogger.getSubLogger(__name__.split(".")[-1]).fatal("Error while loading executor", result["Message"])
         sys.exit(1)
 
     result = executorReactor.go()
     if not result["OK"]:
-        gLogger.fatal(result["Message"])
+        gLogger.getSubLogger(__name__.split(".")[-1]).fatal(result["Message"])
         sys.exit(1)
 
-    gLogger.notice("Graceful exit. Bye!")
+    gLogger.getSubLogger(__name__.split(".")[-1]).notice("Graceful exit. Bye!")
     sys.exit(0)
 
 

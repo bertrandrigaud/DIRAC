@@ -279,7 +279,7 @@ class LocalConfiguration:
             for optionPath in self.mandatoryEntryList:
                 optionPath = self.__getAbsolutePath(optionPath)
                 if not gConfigurationData.extractOptionFromCFG(optionPath):
-                    gLogger.fatal("Missing mandatory local configuration option", optionPath)
+                    gLogger.getSubLogger(self.__class__.__name__).fatal("Missing mandatory local configuration option", optionPath)
                     isMandatoryMissing = True
             if isMandatoryMissing:
                 return S_ERROR()
@@ -301,7 +301,7 @@ class LocalConfiguration:
             if not retVal["OK"]:
                 return retVal
         else:
-            gLogger.warn("Running without remote configuration")
+            gLogger.getSubLogger(self.__class__.__name__).warn("Running without remote configuration")
         if returnErrors:
             return S_OK(errorsList)
         elif errorsList:
@@ -357,7 +357,7 @@ class LocalConfiguration:
         return S_OK()
 
     def __parseCommandLine(self):
-        gLogger.debug("Parsing command line")
+        gLogger.getSubLogger(self.__class__.__name__).debug("Parsing command line")
         shortOption = ""
         longOptionList = []
         for optionTuple in self.commandOptionList:
@@ -365,19 +365,19 @@ class LocalConfiguration:
                 shortOption += f"{optionTuple[0]}"
             else:
                 if optionTuple[0]:
-                    gLogger.error(f"Short option -{optionTuple[0]} has been already defined")
+                    gLogger.getSubLogger(self.__class__.__name__).error(f"Short option -{optionTuple[0]} has been already defined")
             if not optionTuple[1] in longOptionList:
                 longOptionList.append(f"{optionTuple[1]}")
             else:
                 if optionTuple[1]:
-                    gLogger.error(f"Long option --{optionTuple[1]} has been already defined")
+                    gLogger.getSubLogger(self.__class__.__name__).error(f"Long option --{optionTuple[1]} has been already defined")
 
         try:
             opts, args = getopt.gnu_getopt(sys.argv[self.firstOptionIndex :], shortOption, longOptionList)
         except getopt.GetoptError as x:
             # x = option "-k" not recognized
             # print help information and exit
-            gLogger.fatal(f"Error when parsing command line arguments: {str(x)}")
+            gLogger.getSubLogger(self.__class__.__name__).fatal(f"Error when parsing command line arguments: {str(x)}")
             self.showHelp(exitCode=2)
 
         for opt, val in opts:
@@ -396,7 +396,7 @@ class LocalConfiguration:
             self.commandArgList = [arg for arg in args if not arg.endswith(".cfg")]
             if extraCfg:
                 # use error level to make sure users will always see the Warning
-                gLogger.error(
+                gLogger.getSubLogger(self.__class__.__name__).error(
                     """WARNING: Parsing of '.cfg' files as command line arguments is changing!
           Set the environment variable 'export DIRAC_NO_CFG=1' to pass the file as a positional
           argument (this will become the default).
@@ -407,7 +407,7 @@ class LocalConfiguration:
 
         # Check arguments
         if len(self.commandArgList) < len([t for t in self.commandArgumentList if t[2]]):
-            gLogger.fatal("Error when parsing command line arguments: not all mandatory arguments are defined.")
+            gLogger.getSubLogger(self.__class__.__name__).fatal("Error when parsing command line arguments: not all mandatory arguments are defined.")
             self.showHelp(exitCode=1)
 
         groupArgs = []
@@ -431,7 +431,7 @@ class LocalConfiguration:
             # Check accepted values
             for cArg in self.commandArgList[i : i + 1 + step]:
                 if values and cArg not in values:
-                    gLogger.fatal(
+                    gLogger.getSubLogger(self.__class__.__name__).fatal(
                         "Error when parsing command line arguments: "
                         '"%s" does not match the allowed values for %s' % (cArg, argMarking)
                     )
@@ -453,20 +453,20 @@ class LocalConfiguration:
         if "DIRACSYSCONFIG" in os.environ:
             diracSysConfigFiles = os.environ["DIRACSYSCONFIG"].replace(" ", "").split(",")
             for diracSysConfigFile in reversed(diracSysConfigFiles):
-                gLogger.debug(f"Loading file from DIRACSYSCONFIG {diracSysConfigFile}")
+                gLogger.getSubLogger(self.__class__.__name__).debug(f"Loading file from DIRACSYSCONFIG {diracSysConfigFile}")
                 gConfigurationData.loadFile(diracSysConfigFile)
         gConfigurationData.loadFile(os.path.expanduser("~/.dirac.cfg"))
         for fileName in self.additionalCFGFiles:
-            gLogger.debug(f"Loading file {fileName}")
+            gLogger.getSubLogger(self.__class__.__name__).debug(f"Loading file {fileName}")
             retVal = gConfigurationData.loadFile(fileName)
             if not retVal["OK"]:
-                gLogger.debug(f"Could not load file {fileName}: {retVal['Message']}")
+                gLogger.getSubLogger(self.__class__.__name__).debug(f"Could not load file {fileName}: {retVal['Message']}")
                 errorsList.append(retVal["Message"])
         for fileName in self.cliAdditionalCFGFiles:
-            gLogger.debug(f"Loading file {fileName}")
+            gLogger.getSubLogger(self.__class__.__name__).debug(f"Loading file {fileName}")
             retVal = gConfigurationData.loadFile(fileName)
             if not retVal["OK"]:
-                gLogger.debug(f"Could not load file {fileName}: {retVal['Message']}")
+                gLogger.getSubLogger(self.__class__.__name__).debug(f"Could not load file {fileName}: {retVal['Message']}")
                 errorsList.append(retVal["Message"])
         return errorsList
 
@@ -558,12 +558,12 @@ class LocalConfiguration:
         """
         if self.componentName == "Configuration/Server":
             if gConfigurationData.isMaster():
-                gLogger.info("Starting Master Configuration Server")
+                gLogger.getSubLogger(self.__class__.__name__).info("Starting Master Configuration Server")
                 gRefresher.disable()
                 return S_OK()
         retDict = gRefresher.forceRefresh()
         if not retDict["OK"]:
-            gLogger.error("Can't update from any server", retDict["Message"])
+            gLogger.getSubLogger(self.__class__.__name__).error("Can't update from any server", retDict["Message"])
             if strict:
                 return retDict
         return S_OK()
@@ -644,7 +644,7 @@ class LocalConfiguration:
         devLoader.bootstrap()
         if filepath:
             devLoader.watchFile(filepath)
-        gLogger.notice("Devloader started")
+        gLogger.getSubLogger(self.__class__.__name__).notice("Devloader started")
         return S_OK()
 
     def getDebugMode(self):
@@ -672,22 +672,22 @@ class LocalConfiguration:
         """
         # Intro
         if self.__scriptDescription:
-            gLogger.notice(self.__scriptDescription)
+            gLogger.getSubLogger(self.__class__.__name__).notice(self.__scriptDescription)
 
         # Usage line
         if self.__helpUsageDoc:
-            gLogger.notice(self.__helpUsageDoc)
+            gLogger.getSubLogger(self.__class__.__name__).notice(self.__helpUsageDoc)
         else:
-            gLogger.notice("\nUsage:")
-            gLogger.notice(
+            gLogger.getSubLogger(self.__class__.__name__).notice("\nUsage:")
+            gLogger.getSubLogger(self.__class__.__name__).notice(
                 f"  {os.path.basename(sys.argv[0]).split('.')[0].replace('_', '-')} [options] ...",
                 " ".join([t[0] for t in self.commandArgumentList]),
             )
             if dummy:
-                gLogger.notice(dummy)
+                gLogger.getSubLogger(self.__class__.__name__).notice(dummy)
 
         # Describe options
-        gLogger.notice("\nGeneral options:")
+        gLogger.getSubLogger(self.__class__.__name__).notice("\nGeneral options:")
         iLastOpt = 0
         for iPos, iVal in enumerate(self.commandOptionList):
             optionTuple = iVal
@@ -697,15 +697,15 @@ class LocalConfiguration:
                     (optionTuple[1][:-1] + " <value> ").ljust(22),
                     optionTuple[2],
                 )
-                gLogger.notice(line)
+                gLogger.getSubLogger(self.__class__.__name__).notice(line)
             else:
-                gLogger.notice(f"  -{optionTuple[0].ljust(2)} --{optionTuple[1].ljust(22)} : {optionTuple[2]}")
+                gLogger.getSubLogger(self.__class__.__name__).notice(f"  -{optionTuple[0].ljust(2)} --{optionTuple[1].ljust(22)} : {optionTuple[2]}")
             iLastOpt = iPos
             if optionTuple[0] == "h":
                 # Last general opt is always help
                 break
         if iLastOpt + 1 < len(self.commandOptionList):
-            gLogger.notice("\nOptions:")
+            gLogger.getSubLogger(self.__class__.__name__).notice("\nOptions:")
             for iPos in range(iLastOpt + 1, len(self.commandOptionList)):
                 optionTuple = self.commandOptionList[iPos]
                 if optionTuple[0].endswith(":"):
@@ -714,9 +714,9 @@ class LocalConfiguration:
                         (optionTuple[1][:-1] + " <value> ").ljust(22),
                         optionTuple[2],
                     )
-                    gLogger.notice(line)
+                    gLogger.getSubLogger(self.__class__.__name__).notice(line)
                 else:
-                    gLogger.notice(f"  -{optionTuple[0].ljust(2)} --{optionTuple[1].ljust(22)} : {optionTuple[2]}")
+                    gLogger.getSubLogger(self.__class__.__name__).notice(f"  -{optionTuple[0].ljust(2)} --{optionTuple[1].ljust(22)} : {optionTuple[2]}")
 
         # Describe positional arguments
         if self.commandArgumentList:
@@ -736,17 +736,17 @@ class LocalConfiguration:
                     if (aName, dText) not in allDescriptions:
                         allDescriptions.append((aName, dText))
             # Print Arguments block
-            gLogger.notice("\nArguments:")
+            gLogger.getSubLogger(self.__class__.__name__).notice("\nArguments:")
             for arg, doc in allDescriptions:
-                gLogger.notice(f"  {arg}:{' ' * (maxArgLen - len(arg))}  {doc}")
+                gLogger.getSubLogger(self.__class__.__name__).notice(f"  {arg}:{' ' * (maxArgLen - len(arg))}  {doc}")
         elif self.__helpArgumentsDoc:
-            gLogger.notice(self.__helpArgumentsDoc)
+            gLogger.getSubLogger(self.__class__.__name__).notice(self.__helpArgumentsDoc)
 
         # Describe example
         if self.__helpExampleDoc:
-            gLogger.notice(self.__helpExampleDoc)
+            gLogger.getSubLogger(self.__class__.__name__).notice(self.__helpExampleDoc)
 
-        gLogger.notice("")
+        gLogger.getSubLogger(self.__class__.__name__).notice("")
         DIRAC.exit(exitCode)
 
     def deleteOption(self, optionPath):

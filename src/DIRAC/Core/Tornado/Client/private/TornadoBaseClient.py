@@ -97,6 +97,8 @@ class TornadoBaseClient:
                 f"Service name expected to be a string. Received {str(serviceName)} type {type(serviceName)}"
             )
 
+        self.__log = gLogger.getSubLogger(self.__class__.__name__)
+
         self._destinationSrv = serviceName
         self._serviceName = serviceName
         self.__session = None
@@ -131,6 +133,8 @@ class TornadoBaseClient:
             result = initFunc()
             if not result["OK"] and self.__initStatus["OK"]:
                 self.__initStatus = result
+
+        
 
     def __discoverSetup(self):
         """Discover which setup to use and stores it in self.setup
@@ -359,17 +363,17 @@ class TornadoBaseClient:
         # we just return this one.
         # If we have to use a gateway, we just replace the server name in it
         if self._destinationSrv.startswith("https://"):
-            gLogger.debug("Already given a valid url", self._destinationSrv)
+            self.__log.debug("Already given a valid url", self._destinationSrv)
             if not gatewayURL:
                 return S_OK(self._destinationSrv)
-            gLogger.debug("Reconstructing given URL to pass through gateway")
+            self.__log.debug("Reconstructing given URL to pass through gateway")
             path = "/".join(self._destinationSrv.split("/")[3:])
             finalURL = f"{gatewayURL}/{path}"
-            gLogger.debug(f"Gateway URL conversion:\n {self._destinationSrv} -> {finalURL}")
+            self.__log.debug(f"Gateway URL conversion:\n {self._destinationSrv} -> {finalURL}")
             return S_OK(finalURL)
 
         if gatewayURL:
-            gLogger.debug("Using gateway", gatewayURL)
+            self.__log.debug("Using gateway", gatewayURL)
             return S_OK(f"{gatewayURL}/{self._destinationSrv}")
 
         # If nor url is given as constructor, we extract the list of URLs from the CS (System/URLs/Component)
@@ -385,13 +389,13 @@ class TornadoBaseClient:
         # __nbOfRetry removed in HTTPS (managed by requests)
         if self.__nbOfUrls == len(self.__bannedUrls):
             self.__bannedUrls = []  # retry all urls
-            gLogger.debug("Retrying again all URLs")
+            self.__log.debug("Retrying again all URLs")
 
         if self.__bannedUrls and len(urlsList) > 1:
             # we have host which is not accessible. We remove that host from the list.
             # We only remove if we have more than one instance
             for i in self.__bannedUrls:
-                gLogger.debug("Removing banned URL", f"{i}")
+                self.__log.debug("Removing banned URL", f"{i}")
                 urlsList.remove(i)
 
         sURL = urlsList[0]
@@ -421,7 +425,7 @@ class TornadoBaseClient:
                     nexturl = self.__selectUrl(nexturl, urlsList[1:])
                     if nexturl:  # an url found which is in different host
                         sURL = nexturl
-        gLogger.debug("Discovering URL for service", f"{self._destinationSrv} -> {sURL}")
+        self.__log.debug("Discovering URL for service", f"{self._destinationSrv} -> {sURL}")
         return S_OK(sURL)
 
     def __selectUrl(self, notselect, urls):
@@ -443,7 +447,7 @@ class TornadoBaseClient:
                     url = i
                     break
                 else:
-                    gLogger.error(retVal["Message"])
+                    self.__log.error(retVal["Message"])
         return url
 
     def getServiceName(self):
@@ -539,7 +543,7 @@ class TornadoBaseClient:
                     result = writeTokenDictToTokenFile(token)
                 if not result["OK"]:
                     return result
-                gLogger.notice(f"Token is saved in {result['Value']}.")
+                self.__log.notice(f"Token is saved in {result['Value']}.")
 
             auth = {"headers": {"Authorization": f"Bearer {token['access_token']}"}}
         elif self.kwargs.get(self.KW_PROXY_STRING):
@@ -553,7 +557,7 @@ class TornadoBaseClient:
         else:
             auth = {"cert": Locations.getProxyLocation()}
             if not auth["cert"]:
-                gLogger.error("No proxy found")
+                self.__log.error("No proxy found")
                 return S_ERROR("No proxy found")
 
         # We have a try/except for all the exceptions

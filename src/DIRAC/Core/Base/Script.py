@@ -116,7 +116,7 @@ class Script:
             cls.localCfg.addMandatoryEntry("/DIRAC/Setup")
         resultDict = cls.localCfg.loadUserData()
         if not ignoreErrors and not resultDict["OK"]:
-            gLogger.error("There were errors when loading configuration", resultDict["Message"])
+            gLogger.getSubLogger(__name__.split(".")[-1]).error("There were errors when loading configuration", resultDict["Message"])
             sys.exit(1)
         if not userDisabled:
             cls.localCfg.enableCS()

@@ -310,6 +310,7 @@ class InstalledComponentsDB:
     """
 
     def __init__(self):
+        self.__log = gLogger.getSubLogger(self.__class__.__name__)
         self.__initializeConnection("Framework/InstalledComponentsDB")
         result = self.__initializeDB()
         if not result["OK"]:
@@ -349,7 +350,7 @@ class InstalledComponentsDB:
             except Exception as e:
                 return S_ERROR(e)
         else:
-            gLogger.debug("Table 'Components' already exists")
+            self.__log.debug("Table 'Components' already exists")
 
         # Hosts
         if "Hosts" not in tablesInDB:
@@ -358,7 +359,7 @@ class InstalledComponentsDB:
             except Exception as e:
                 return S_ERROR(e)
         else:
-            gLogger.debug("Table 'Hosts' already exists")
+            self.__log.debug("Table 'Hosts' already exists")
 
         # InstalledComponents
         if "InstalledComponents" not in tablesInDB:
@@ -367,7 +368,7 @@ class InstalledComponentsDB:
             except Exception as e:
                 return S_ERROR(e)
         else:
-            gLogger.debug("Table 'InstalledComponents' already exists")
+            self.__log.debug("Table 'InstalledComponents' already exists")
 
         # HostLogging
         if "HostLogging" not in tablesInDB:
@@ -376,7 +377,7 @@ class InstalledComponentsDB:
             except Exception as e:
                 return S_ERROR(e)
         else:
-            gLogger.debug("Table 'HostLogging' already exists")
+            self.__log.debug("Table 'HostLogging' already exists")
 
         return S_OK("Tables created")
 
@@ -954,11 +955,11 @@ class InstalledComponentsDB:
                 session.close()
                 return S_ERROR("Given host does not exist")
             # check if HostName exists with different CPU
-            gLogger.verbose("Host not found, looking just for hostname")
+            self.__log.verbose("Host not found, looking just for hostname")
             hostNameDict = {"HostName": hostDict["HostName"]}
             result = self.__filterFields(session, Host, hostNameDict)
             if result["Value"].count() == 1:
-                gLogger.verbose("HostName found, updating CPU model")
+                self.__log.verbose("HostName found, updating CPU model")
                 host = result["Value"][0]
                 self.updateHosts(hostNameDict, hostDict)
             elif result["Value"].count() > 1:

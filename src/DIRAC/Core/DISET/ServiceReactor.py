@@ -52,6 +52,7 @@ class ServiceReactor:
         self.__listeningConnections = {}
         self.__stats = ReactorStats()
         self.__processes = []
+        self.__log = gLogger.getSubLogger(self.__class__.__name__)
 
     def initialize(self, servicesList):
         try:
@@ -71,14 +72,14 @@ class ServiceReactor:
 
         # Loop again to include the GW in case there is one (included in the __init__)
         for serviceName in self.__services:
-            gLogger.info(f"Initializing {serviceName}")
+            self.__log.info(f"Initializing {serviceName}")
             result = self.__services[serviceName].initialize()
             if not result["OK"]:
                 return result
         return S_OK()
 
     def closeListeningConnections(self):
-        gLogger.info("Closing listening connections...")
+        self.__log.info("Closing listening connections...")
         for svcName in self.__listeningConnections:
             if "transport" in self.__listeningConnections[svcName]:
                 try:
@@ -86,7 +87,7 @@ class ServiceReactor:
                 except Exception:
                     pass
                 del self.__listeningConnections[svcName]["transport"]
-        gLogger.info("Connections closed")
+        self.__log.info("Connections closed")
 
     def __createListeners(self):
         for serviceName in self.__services:
@@ -108,7 +109,7 @@ class ServiceReactor:
                     if kw == "timeout":
                         value = int(value)
                     transportArgs[kw] = value
-            gLogger.verbose(f"Initializing {protocol} transport", svcCfg.getURL())
+            self.__log.verbose(f"Initializing {protocol} transport", svcCfg.getURL())
             transport = gProtocolDict[protocol]["transport"](("", port), bServerMode=True, **transportArgs)
             retVal = transport.initAsServer()
             if not retVal["OK"]:
@@ -131,7 +132,7 @@ class ServiceReactor:
             handler.stopAllProcess()
 
         for child in frame.f_locals.get("children", []):
-            gLogger.info("Stopping child processes: %d" % child)
+            self.__log.info("Stopping child processes: %d" % child)
             os.kill(child, signal.SIGTERM)
 
         sys.exit(0)
@@ -142,7 +143,7 @@ class ServiceReactor:
             self.__closeListeningConnections()
             return result
         for svcName in self.__listeningConnections:
-            gLogger.always(f"Listening at {self.__services[svcName].getConfig().getURL()}")
+            self.__log.always(f"Listening at {self.__services[svcName].getConfig().getURL()}")
 
         isMultiProcessingAllowed = False
         for svcName in self.__listeningConnections:
@@ -158,7 +159,7 @@ class ServiceReactor:
                     p = multiprocessing.Process(target=self.__startCloneProcess, args=(svcName, i))
                     self.__processes.append(p)
                     p.start()
-                    gLogger.always(f"Started clone process {i} for {svcName}")
+                    self.__log.always(f"Started clone process {i} for {svcName}")
 
         while self.__alive:
             self.__acceptIncomingConnection()
@@ -168,7 +169,7 @@ class ServiceReactor:
         It stops all the running processes.
         """
         for process in self.__processes:
-            gLogger.info("Stopping: PID=%d, name=%s, parentPid=%d" % (process.pid, process.name, process._parent_pid))
+            self.__log.info("Stopping: PID=%d, name=%s, parentPid=%d" % (process.pid, process.name, process._parent_pid))
             if process.is_alive():
                 process.terminate()
                 self.__processes.remove(process)
@@ -210,7 +211,7 @@ class ServiceReactor:
                         svcName = key.data
                         retVal = self.__listeningConnections[svcName]["transport"].acceptConnection()
                         if not retVal["OK"]:
-                            gLogger.warn("Error while accepting a connection: ", retVal["Message"])
+                            self.__log.warn("Error while accepting a connection: ", retVal["Message"])
                             return
                         clientTransport = retVal["Value"]
             except OSError:
@@ -219,14 +220,14 @@ class ServiceReactor:
             # Is it banned?
             clientIP = clientTransport.getRemoteAddress()[0]
             if clientIP in Registry.getBannedIPs():
-                gLogger.warn(f"Client connected from banned ip {clientIP}")
+                self.__log.warn(f"Client connected from banned ip {clientIP}")
                 clientTransport.close()
                 continue
             # Handle connection
             self.__stats.connectionStablished()
             self.__services[svcName].handleConnection(clientTransport)
             while self.__services[svcName].wantsThrottle:
-                gLogger.warn("Sleeping as service requested throttling", svcName)
+                self.__log.warn("Sleeping as service requested throttling", svcName)
                 time.sleep(THROTTLE_SERVICE_SLEEP_SECONDS)
             # Renew context?
             now = time.time()

@@ -21,6 +21,8 @@ class ServiceInterfaceBase:
 
     def __init__(self, sURL):
         self.sURL = sURL
+        #self.__log = gLogger.getSubLogger(self.__class__.__name__)
+
         gLogger.info("Initializing Configuration Service", f"URL is {sURL}")
         self.__modificationsIgnoreMask = ["/DIRAC/Configuration/Servers", "/DIRAC/Configuration/Version"]
         gConfigurationData.setAsService()

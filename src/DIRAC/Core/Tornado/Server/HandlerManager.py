@@ -38,6 +38,7 @@ class HandlerManager:
         """
         self.__handlers = {}
         self.instances = dict(Service=services, API=endpoints)
+        self.__log = gLogger.getSubLogger(self.__class__.__name__)
 
     def discoverHandlers(self, handlerInstance):
         """
@@ -49,7 +50,7 @@ class HandlerManager:
         :return: list
         """
         urls = []
-        gLogger.debug(f"Trying to auto-discover the {handlerInstance} handlers for Tornado")
+        self.__log.debug(f"Trying to auto-discover the {handlerInstance} handlers for Tornado")
 
         # Look in config
         diracSystems = gConfig.getSections("/Systems")
@@ -116,7 +117,7 @@ class HandlerManager:
                 # Define the system and component name as the attributes of the handler that belongs to them
                 handler.SYSTEM_NAME, handler.COMPONENT_NAME = fullComponentName.split("/")
 
-                gLogger.info("Found new handler", f"{fullComponentName}: {handler}")
+                self.__log.info("Found new handler", f"{fullComponentName}: {handler}")
 
                 # at this stage we run the basic handler initialization
                 # see DIRAC.Core.Tornado.Server.private.BaseRequestHandler for more details
@@ -126,7 +127,7 @@ class HandlerManager:
 
                 # First of all check if we can find route
                 if not urls:
-                    gLogger.warn(f"URL not found for {fullComponentName}")
+                    self.__log.warn(f"URL not found for {fullComponentName}")
                     return S_ERROR(f"URL not found for {fullComponentName}")
 
                 # Add new handler routes

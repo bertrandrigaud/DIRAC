@@ -18,7 +18,7 @@ from DIRAC.Core.DISET.TransferClient import TransferClient
 from DIRAC.Core.Tornado.Client.TornadoClient import TornadoClient
 
 
-sLog = gLogger.getSubLogger(__name__)
+sLog = gLogger.getSubLogger(__name__.split(".")[-1])
 
 
 def ClientSelector(disetClient, *args, **kwargs):  # We use same interface as RPCClient

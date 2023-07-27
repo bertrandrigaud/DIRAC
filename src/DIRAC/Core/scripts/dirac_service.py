@@ -32,7 +32,7 @@ def main():
     resultDict = localCfg.loadUserData()
     if not resultDict["OK"]:
         gLogger.initialize(serverName, "/")
-        gLogger.error("There were errors when loading configuration", resultDict["Message"])
+        gLogger.getSubLogger(__name__.split(".")[-1]).error("There were errors when loading configuration", resultDict["Message"])
         sys.exit(1)
 
     includeExtensionErrors()
@@ -40,12 +40,12 @@ def main():
     serverToLaunch = ServiceReactor()
     result = serverToLaunch.initialize(positionalArgs)
     if not result["OK"]:
-        gLogger.error(result["Message"])
+        gLogger.getSubLogger(__name__.split(".")[-1]).error(result["Message"])
         sys.exit(1)
 
     result = serverToLaunch.serve()
     if not result["OK"]:
-        gLogger.error(result["Message"])
+        gLogger.getSubLogger(__name__.split(".")[-1]).error(result["Message"])
         sys.exit(1)
 
 
